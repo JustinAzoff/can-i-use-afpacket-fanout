@@ -13,10 +13,12 @@ import (
 var (
 	workerCount int
 	iface       string
+	fanoutGroup int
 )
 
 func init() {
 	flag.IntVar(&workerCount, "workercount", 8, "Number of workers")
+	flag.IntVar(&fanoutGroup, "fanoutGroup", 42, "fanout group id")
 	flag.StringVar(&iface, "interface", "wlan0", "Interface")
 	flag.Parse()
 }
@@ -57,7 +59,7 @@ func worker(id int, flowchan chan WorkerFlow) {
 	if err != nil {
 		log.Fatal(err)
 	}
-	err = handle.SetFanout(afpacket.FanoutHash, uint16(id))
+	err = handle.SetFanout(afpacket.FanoutHash, uint16(fanoutGroup))
 	if err != nil {
 		log.Fatal(err)
 	}
