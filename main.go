@@ -101,10 +101,8 @@ func main() {
 		reverseFlow := FiveTuple{flow.proto, flow.dst, flow.dport, flow.src, flow.sport}
 
 		worker, existed = flowMap[reverseFlow]
-		if !existed {
-			flowMap[flow] = workerflow.workerId
-		} else if worker != workerflow.workerId {
-			log.Printf("FAIL: saw reverse flow %s on workers %d and %d", flow, workerflow.workerId, worker)
+		if existed && worker != workerflow.workerId {
+			log.Printf("FAIL: saw reverse flow of %s on workers %d and %d", flow, workerflow.workerId, worker)
 		}
 
 		if packets%100 == 0 {
