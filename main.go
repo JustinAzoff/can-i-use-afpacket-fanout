@@ -78,11 +78,35 @@ func main() {
 
 	flows := make(chan WorkerFlow, workerCount)
 
+	flowMap := make(map[FiveTuple]int)
+
 	for w := 0; w < workerCount; w++ {
 		go worker(w, flows)
 	}
 
-	for flow := range flows {
-		log.Println(flow.workerId, flow.flow)
+	packets := 0
+	for workerflow := range flows {
+		packets++
+		flow := workerflow.flow
+		worker, existed := flowMap[flow]
+		if !existed {
+			flowMap[flow] = workerflow.workerId
+		} else if worker != workerflow.workerId {
+			log.Printf("FAIL: saw flow %s on workers %d and %d", flow, workerflow.workerId, worker)
+		}
+
+		//now check reverse
+		reverseFlow := FiveTuple{flow.proto, flow.dst, flow.dport, flow.src, flow.sport}
+
+		worker, existed = flowMap[reverseFlow]
+		if !existed {
+			flowMap[flow] = workerflow.workerId
+		} else if worker != workerflow.workerId {
+			log.Printf("FAIL: saw reverse flow %s on workers %d and %d", flow, workerflow.workerId, worker)
+		}
+
+		if packets%100 == 0 {
+			log.Printf("Packets seen=%d", packets)
+		}
 	}
 }
