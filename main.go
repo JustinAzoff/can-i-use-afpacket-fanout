@@ -14,11 +14,13 @@ var (
 	workerCount int
 	iface       string
 	fanoutGroup int
+	maxFlows    int
 )
 
 func init() {
 	flag.IntVar(&workerCount, "workercount", 8, "Number of workers")
 	flag.IntVar(&fanoutGroup, "fanoutGroup", 42, "fanout group id")
+	flag.IntVar(&maxFlows, "maxflows", 100, "How many flows to track before exiting")
 	flag.StringVar(&iface, "interface", "wlan0", "Interface")
 	flag.Parse()
 }
@@ -87,26 +89,43 @@ func main() {
 	}
 
 	packets := 0
+	success := 0
+	failures := 0
+	reverseFailures := 0
 	for workerflow := range flows {
 		packets++
+
+		//Check if this flow was seen before, and if so, on the same worker
 		flow := workerflow.flow
 		worker, existed := flowMap[flow]
 		if !existed {
 			flowMap[flow] = workerflow.workerId
 		} else if worker != workerflow.workerId {
 			log.Printf("FAIL: saw flow %s on workers %d and %d", flow, workerflow.workerId, worker)
+			failures++
+		} else {
+			success++
 		}
 
-		//now check reverse
+		//now check if the reverse flow was seen, and if so, on the same worker
 		reverseFlow := FiveTuple{flow.proto, flow.dst, flow.dport, flow.src, flow.sport}
 
 		worker, existed = flowMap[reverseFlow]
-		if existed && worker != workerflow.workerId {
+		if !existed {
+			//Nothing to do in this case
+		} else if worker != workerflow.workerId {
 			log.Printf("FAIL: saw reverse flow of %s on workers %d and %d", flow, workerflow.workerId, worker)
+			reverseFailures++
+		} else {
+			success++
 		}
 
 		if packets%100 == 0 {
-			log.Printf("Packets seen=%d", packets)
+			log.Printf("packets=%d flows=%d success=%d failures=%d reverse_failures=%d", packets, len(flowMap), success, failures, reverseFailures)
+		}
+		if len(flowMap) > maxFlows {
+			break
 		}
 	}
+	log.Printf("packets=%d flows=%d success=%d failures=%d reverse_failures=%d", packets, len(flowMap), success, failures, reverseFailures)
 }
