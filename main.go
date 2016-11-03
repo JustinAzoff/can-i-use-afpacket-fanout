@@ -84,6 +84,7 @@ func main() {
 	flows := make(chan WorkerFlow, workerCount)
 
 	flowMap := make(map[FiveTuple]int)
+	workerFlowCounts := make(map[int]int)
 
 	for w := 0; w < workerCount; w++ {
 		go worker(w, flows)
@@ -102,6 +103,7 @@ func main() {
 		worker, existed := flowMap[flow]
 		if !existed {
 			flowMap[flow] = workerflow.workerId
+			workerFlowCounts[workerflow.workerId]++
 		} else if worker != workerflow.workerId {
 			log.Printf("FAIL: saw flow %s on workers %d and %d", flow, workerflow.workerId, worker)
 			failures++
@@ -130,4 +132,8 @@ func main() {
 		}
 	}
 	log.Printf("packets=%d flows=%d success=%d failures=%d reverse_failures=%d", packets, len(flowMap), success, failures, reverseFailures)
+	log.Printf("Worker flow count distribution:")
+	for worker, count := range workerFlowCounts {
+		log.Printf("worker=%d flows=%d", worker, count)
+	}
 }
