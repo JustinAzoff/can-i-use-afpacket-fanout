@@ -1,4 +1,4 @@
-# Can I use acpacket fanout?
+# Can I use afpacket fanout?
 
     $ go build && sudo ./can-i-use-afpacket-fanout  
     2016/11/02 20:51:17 Starting worker id 7
