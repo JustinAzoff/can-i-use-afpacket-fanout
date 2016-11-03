@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"time"
 
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/afpacket"
@@ -21,7 +22,7 @@ func init() {
 	flag.IntVar(&workerCount, "workercount", 8, "Number of workers")
 	flag.IntVar(&fanoutGroup, "fanoutGroup", 42, "fanout group id")
 	flag.IntVar(&maxFlows, "maxflows", 100, "How many flows to track before exiting")
-	flag.StringVar(&iface, "interface", "wlan0", "Interface")
+	flag.StringVar(&iface, "interface", "eth0", "Interface")
 	flag.Parse()
 }
 
@@ -56,7 +57,7 @@ func getFiveTuple(p gopacket.Packet) (FiveTuple, error) {
 }
 
 func worker(id int, flowchan chan WorkerFlow) {
-	log.Printf("Starting worker id %d", id)
+	log.Printf("Starting worker id %d on interface %s", id, iface)
 	handle, err := afpacket.NewTPacket(afpacket.OptInterface(iface))
 	if err != nil {
 		log.Fatal(err)
@@ -86,6 +87,7 @@ func main() {
 
 	for w := 0; w < workerCount; w++ {
 		go worker(w, flows)
+		time.Sleep(10 * time.Millisecond)
 	}
 
 	packets := 0
