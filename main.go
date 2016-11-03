@@ -32,7 +32,7 @@ type FiveTuple struct {
 }
 
 type WorkerFlow struct {
-	workerId int
+	workerID int
 	flow     FiveTuple
 }
 
@@ -102,10 +102,10 @@ func main() {
 		flow := workerflow.flow
 		worker, existed := flowMap[flow]
 		if !existed {
-			flowMap[flow] = workerflow.workerId
-			workerFlowCounts[workerflow.workerId]++
-		} else if worker != workerflow.workerId {
-			log.Printf("FAIL: saw flow %s on workers %d and %d", flow, workerflow.workerId, worker)
+			flowMap[flow] = workerflow.workerID
+			workerFlowCounts[workerflow.workerID]++
+		} else if worker != workerflow.workerID {
+			log.Printf("FAIL: saw flow %s on workers %d and %d", flow, workerflow.workerID, worker)
 			failures++
 		} else {
 			success++
@@ -117,8 +117,8 @@ func main() {
 		worker, existed = flowMap[reverseFlow]
 		if !existed {
 			//Nothing to do in this case
-		} else if worker != workerflow.workerId {
-			log.Printf("FAIL: saw reverse flow of %s on workers %d and %d", flow, workerflow.workerId, worker)
+		} else if worker != workerflow.workerID {
+			log.Printf("FAIL: saw reverse flow of %s on workers %d and %d", flow, workerflow.workerID, worker)
 			reverseFailures++
 		} else {
 			success++
