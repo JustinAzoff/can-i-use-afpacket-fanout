@@ -1,6 +1,8 @@
 # Can I use afpacket fanout?
 
-    $ go build && sudo ./can-i-use-afpacket-fanout -interface wlan0 -maxflows 500
+    $ export GOPATH=~/go # If you don't already have this set to something
+    $ go get github.com/JustinAzoff/can-i-use-afpacket-fanout
+    $ sudo ~/go/bin/can-i-use-afpacket-fanout -interface wlan0 -maxflows 500
     2016/11/08 03:55:20 Starting worker id 0 on interface wlan0
     2016/11/08 03:55:20 Starting worker id 1 on interface wlan0
     2016/11/08 03:55:20 Starting worker id 2 on interface wlan0
