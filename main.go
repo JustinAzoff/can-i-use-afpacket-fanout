@@ -4,7 +4,6 @@ import (
 	"flag"
 	"fmt"
 	"log"
-	"time"
 
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/afpacket"
@@ -36,6 +35,14 @@ type WorkerFlow struct {
 	flow     FiveTuple
 }
 
+type Stats struct {
+	packets         int
+	success         int
+	reverseSuccess  int
+	failures        int
+	reverseFailures int
+}
+
 func getFiveTuple(p gopacket.Packet) (FiveTuple, error) {
 	var flow FiveTuple
 
@@ -57,7 +64,6 @@ func getFiveTuple(p gopacket.Packet) (FiveTuple, error) {
 }
 
 func worker(id int, flowchan chan WorkerFlow) {
-	log.Printf("Starting worker id %d on interface %s", id, iface)
 	handle, err := afpacket.NewTPacket(afpacket.OptInterface(iface))
 	if err != nil {
 		log.Fatal(err)
@@ -87,16 +93,14 @@ func main() {
 	workerFlowCounts := make(map[int]int)
 
 	for w := 0; w < workerCount; w++ {
+		log.Printf("Starting worker id %d on interface %s", w, iface)
 		go worker(w, flows)
-		time.Sleep(10 * time.Millisecond)
 	}
+	log.Printf("Collecting results until %d flows have been seen..", maxFlows)
 
-	packets := 0
-	success := 0
-	failures := 0
-	reverseFailures := 0
+	s := Stats{}
 	for workerflow := range flows {
-		packets++
+		s.packets++
 
 		//Check if this flow was seen before, and if so, on the same worker
 		flow := workerflow.flow
@@ -106,9 +110,9 @@ func main() {
 			workerFlowCounts[workerflow.workerID]++
 		} else if worker != workerflow.workerID {
 			log.Printf("FAIL: saw flow %s on workers %d and %d", flow, workerflow.workerID, worker)
-			failures++
+			s.failures++
 		} else {
-			success++
+			s.success++
 		}
 
 		//now check if the reverse flow was seen, and if so, on the same worker
@@ -116,24 +120,26 @@ func main() {
 
 		worker, existed = flowMap[reverseFlow]
 		if !existed {
-			//Nothing to do in this case
+			//Nothing to do in this case, can't draw any conclusions
 		} else if worker != workerflow.workerID {
 			log.Printf("FAIL: saw reverse flow of %s on workers %d and %d", flow, workerflow.workerID, worker)
-			reverseFailures++
+			s.reverseFailures++
 		} else {
-			success++
-		}
-
-		if packets%100 == 0 {
-			log.Printf("packets=%d flows=%d success=%d failures=%d reverse_failures=%d", packets, len(flowMap), success, failures, reverseFailures)
+			s.reverseSuccess++
 		}
 		if len(flowMap) > maxFlows {
 			break
 		}
+
+		if s.packets%100 == 0 {
+			log.Printf("Stats: packets=%d flows=%d success=%d reverse_success=%d failures=%d reverse_failures=%d",
+				s.packets, len(flowMap), s.success, s.reverseSuccess, s.failures, s.reverseFailures)
+		}
 	}
-	log.Printf("packets=%d flows=%d success=%d failures=%d reverse_failures=%d", packets, len(flowMap), success, failures, reverseFailures)
+	log.Printf("Final Stats: packets=%d flows=%d success=%d reverse_success=%d failures=%d reverse_failures=%d",
+		s.packets, len(flowMap), s.success, s.reverseSuccess, s.failures, s.reverseFailures)
 	log.Printf("Worker flow count distribution:")
-	for worker, count := range workerFlowCounts {
-		log.Printf("worker=%d flows=%d", worker, count)
+	for w := 0; w < workerCount; w++ {
+		log.Printf(" - worker=%d flows=%d", w, workerFlowCounts[w])
 	}
 }
