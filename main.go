@@ -135,8 +135,8 @@ func main() {
 		}
 
 		if s.packets%100 == 0 {
-			log.Printf("Stats: packets=%d flows=%d success=%d reverse_success=%d failures=%d reverse_failures=%d",
-				s.packets, len(flowMap), s.success, s.reverseSuccess, s.failures, s.reverseFailures)
+			log.Printf("Stats: packets=%d flows=%d failed_flows=%d success=%d reverse_success=%d failures=%d reverse_failures=%d",
+				s.packets, len(flowMap), len(failedFlowMap), s.success, s.reverseSuccess, s.failures, s.reverseFailures)
 		}
 	}
 	log.Printf("Final Stats: packets=%d flows=%d failed_flows=%d success=%d reverse_success=%d failures=%d reverse_failures=%d",
