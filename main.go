@@ -11,10 +11,11 @@ import (
 )
 
 var (
-	workerCount int
-	iface       string
-	fanoutGroup int
-	maxFlows    int
+	workerCount    int
+	iface          string
+	fanoutGroup    int
+	maxFlows       int
+	statusInterval int
 )
 
 func init() {
@@ -22,6 +23,7 @@ func init() {
 	flag.IntVar(&fanoutGroup, "fanoutGroup", 42, "fanout group id")
 	flag.IntVar(&maxFlows, "maxflows", 100, "How many flows to track before exiting")
 	flag.StringVar(&iface, "interface", "eth0", "Interface")
+	flag.IntVar(&statusInterval, "statusinterval", 500, "How many packets before each status update")
 	flag.Parse()
 }
 
@@ -134,7 +136,7 @@ func main() {
 			break
 		}
 
-		if s.packets%100 == 0 {
+		if s.packets%statusInterval == 0 {
 			log.Printf("Stats: packets=%d flows=%d failed_flows=%d success=%d reverse_success=%d failures=%d reverse_failures=%d",
 				s.packets, len(flowMap), len(failedFlowMap), s.success, s.reverseSuccess, s.failures, s.reverseFailures)
 		}
