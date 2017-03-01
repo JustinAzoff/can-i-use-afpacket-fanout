@@ -90,6 +90,7 @@ func main() {
 	flows := make(chan WorkerFlow, workerCount)
 
 	flowMap := make(map[FiveTuple]int)
+	failedFlowMap := make(map[FiveTuple]bool)
 	workerFlowCounts := make(map[int]int)
 
 	for w := 0; w < workerCount; w++ {
@@ -110,6 +111,7 @@ func main() {
 			workerFlowCounts[workerflow.workerID]++
 		} else if worker != workerflow.workerID {
 			log.Printf("FAIL: saw flow %s on workers %d and %d", flow, workerflow.workerID, worker)
+			failedFlowMap[flow] = true
 			s.failures++
 		} else {
 			s.success++
@@ -123,6 +125,7 @@ func main() {
 			//Nothing to do in this case, can't draw any conclusions
 		} else if worker != workerflow.workerID {
 			log.Printf("FAIL: saw reverse flow of %s on workers %d and %d", flow, workerflow.workerID, worker)
+			failedFlowMap[reverseFlow] = true
 			s.reverseFailures++
 		} else {
 			s.reverseSuccess++
@@ -136,8 +139,8 @@ func main() {
 				s.packets, len(flowMap), s.success, s.reverseSuccess, s.failures, s.reverseFailures)
 		}
 	}
-	log.Printf("Final Stats: packets=%d flows=%d success=%d reverse_success=%d failures=%d reverse_failures=%d",
-		s.packets, len(flowMap), s.success, s.reverseSuccess, s.failures, s.reverseFailures)
+	log.Printf("Final Stats: packets=%d flows=%d failed_flows=%d success=%d reverse_success=%d failures=%d reverse_failures=%d",
+		s.packets, len(flowMap), len(failedFlowMap), s.success, s.reverseSuccess, s.failures, s.reverseFailures)
 	log.Printf("Worker flow count distribution:")
 	for w := 0; w < workerCount; w++ {
 		log.Printf(" - worker=%d flows=%d", w, workerFlowCounts[w])
