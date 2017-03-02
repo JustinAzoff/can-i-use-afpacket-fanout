@@ -16,6 +16,9 @@ var (
 	fanoutGroup    int
 	maxFlows       int
 	statusInterval int
+	//skipInitial is used to skip packets that are delivered before the kernel fully sets up the load balancing
+	//between all the workers
+	skipInitial int
 )
 
 func init() {
@@ -24,6 +27,7 @@ func init() {
 	flag.IntVar(&maxFlows, "maxflows", 100, "How many flows to track before exiting")
 	flag.StringVar(&iface, "interface", "eth0", "Interface")
 	flag.IntVar(&statusInterval, "statusinterval", 500, "How many packets before each status update")
+	flag.IntVar(&skipInitial, "skipinitial", 100, "How many packets to skip before collecting data")
 	flag.Parse()
 }
 
@@ -78,12 +82,20 @@ func worker(id int, flowchan chan WorkerFlow) {
 
 	source := gopacket.NewPacketSource(handle, layers.LinkTypeEthernet)
 
+	n := 0
 	for packet := range source.Packets() {
 		ft, err := getFiveTuple(packet)
 		if err != nil {
 			continue
 		}
-		flowchan <- WorkerFlow{id, ft}
+		if n > skipInitial {
+			flowchan <- WorkerFlow{id, ft}
+		} else {
+			n++
+			if n == skipInitial {
+				log.Printf("Worker %d has seen at least %d packets, collecting data", id, skipInitial)
+			}
+		}
 	}
 }
 
