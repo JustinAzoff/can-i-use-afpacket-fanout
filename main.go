@@ -127,9 +127,12 @@ func main() {
 		} else if worker != workerflow.workerID {
 			log.Printf("FAIL: saw flow %s on worker %d expected %d", flow, workerflow.workerID, worker)
 			failedFlowMap[flow] = true
+			delete(successFlowMap, flow)
 			s.failures++
 		} else {
-			successFlowMap[flow] = true
+			if _, exists := failedFlowMap[flow]; !exists {
+				successFlowMap[flow] = true
+			}
 			s.success++
 		}
 
@@ -142,9 +145,12 @@ func main() {
 		} else if worker != workerflow.workerID {
 			log.Printf("FAIL: saw reverse flow of %s on worker %d expected %d", flow, workerflow.workerID, worker)
 			failedFlowMap[reverseFlow] = true
+			delete(successFlowMap, reverseFlow)
 			s.reverseFailures++
 		} else {
-			successFlowMap[reverseFlow] = true
+			if _, exists := failedFlowMap[reverseFlow]; !exists {
+				successFlowMap[reverseFlow] = true
+			}
 			s.reverseSuccess++
 		}
 		if len(flowMap) > maxFlows {
