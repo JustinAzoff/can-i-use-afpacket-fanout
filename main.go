@@ -93,6 +93,7 @@ func main() {
 
 	flowMap := make(map[FiveTuple]int)
 	failedFlowMap := make(map[FiveTuple]bool)
+	successFlowMap := make(map[FiveTuple]bool)
 	workerFlowCounts := make(map[int]int)
 
 	for w := 0; w < workerCount; w++ {
@@ -112,10 +113,11 @@ func main() {
 			flowMap[flow] = workerflow.workerID
 			workerFlowCounts[workerflow.workerID]++
 		} else if worker != workerflow.workerID {
-			log.Printf("FAIL: saw flow %s on workers %d and %d", flow, workerflow.workerID, worker)
+			log.Printf("FAIL: saw flow %s on worker %d expected %d", flow, workerflow.workerID, worker)
 			failedFlowMap[flow] = true
 			s.failures++
 		} else {
+			successFlowMap[flow] = true
 			s.success++
 		}
 
@@ -126,10 +128,11 @@ func main() {
 		if !existed {
 			//Nothing to do in this case, can't draw any conclusions
 		} else if worker != workerflow.workerID {
-			log.Printf("FAIL: saw reverse flow of %s on workers %d and %d", flow, workerflow.workerID, worker)
+			log.Printf("FAIL: saw reverse flow of %s on worker %d expected %d", flow, workerflow.workerID, worker)
 			failedFlowMap[reverseFlow] = true
 			s.reverseFailures++
 		} else {
+			successFlowMap[reverseFlow] = true
 			s.reverseSuccess++
 		}
 		if len(flowMap) > maxFlows {
@@ -137,12 +140,12 @@ func main() {
 		}
 
 		if s.packets%statusInterval == 0 {
-			log.Printf("Stats: packets=%d flows=%d failed_flows=%d success=%d reverse_success=%d failures=%d reverse_failures=%d",
-				s.packets, len(flowMap), len(failedFlowMap), s.success, s.reverseSuccess, s.failures, s.reverseFailures)
+			log.Printf("Stats: packets=%d flows=%d success_flows=%d failed_flows=%d pkt_success=%d pkt_reverse_success=%d pkt_failures=%d pkt_reverse_failures=%d",
+				s.packets, len(flowMap), len(successFlowMap), len(failedFlowMap), s.success, s.reverseSuccess, s.failures, s.reverseFailures)
 		}
 	}
-	log.Printf("Final Stats: packets=%d flows=%d failed_flows=%d success=%d reverse_success=%d failures=%d reverse_failures=%d",
-		s.packets, len(flowMap), len(failedFlowMap), s.success, s.reverseSuccess, s.failures, s.reverseFailures)
+	log.Printf("Final Stats: packets=%d flows=%d success_flows=%d failed_flows=%d pkt_success=%d pkt_reverse_success=%d pkt_failures=%d pkt_reverse_failures=%d",
+		s.packets, len(flowMap), len(successFlowMap), len(failedFlowMap), s.success, s.reverseSuccess, s.failures, s.reverseFailures)
 	log.Printf("Worker flow count distribution:")
 	for w := 0; w < workerCount; w++ {
 		log.Printf(" - worker=%d flows=%d", w, workerFlowCounts[w])
