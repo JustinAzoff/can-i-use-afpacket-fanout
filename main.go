@@ -74,7 +74,7 @@ func worker(id int, flowchan chan WorkerFlow) {
 	if err != nil {
 		log.Fatal(err)
 	}
-	err = handle.SetFanout(afpacket.FanoutHash, uint16(fanoutGroup))
+	err = handle.SetFanout(afpacket.FanoutHashWithDefrag, uint16(fanoutGroup))
 	if err != nil {
 		log.Fatal(err)
 	}
