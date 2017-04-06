@@ -78,6 +78,7 @@ func getFiveTuple(p gopacket.Packet) (FiveTuple, error) {
 
 func spawn_worker(id int, flowchan chan WorkerFlow) {
 	cmd := exec.Command(os.Args[0],
+		"-skipinitial", fmt.Sprintf("%d", skipInitial),
 		"-interface", iface,
 		"-worker", fmt.Sprintf("%d", id),
 		"-fanoutGroup", fmt.Sprintf("%d", fanoutGroup),
