@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"sync"
 
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/afpacket"
@@ -19,6 +20,7 @@ var (
 	//skipInitial is used to skip packets that are delivered before the kernel fully sets up the load balancing
 	//between all the workers
 	skipInitial int
+	wg          sync.WaitGroup
 )
 
 func init() {
@@ -80,6 +82,9 @@ func worker(id int, flowchan chan WorkerFlow) {
 	}
 	defer handle.Close()
 
+	wg.Done()
+	wg.Wait()
+
 	source := gopacket.NewPacketSource(handle, layers.LinkTypeEthernet)
 
 	n := 0
@@ -108,11 +113,13 @@ func main() {
 	successFlowMap := make(map[FiveTuple]bool)
 	workerFlowCounts := make(map[int]int)
 
+	wg.Add(workerCount)
 	for w := 0; w < workerCount; w++ {
 		log.Printf("Starting worker id %d on interface %s", w, iface)
 		go worker(w, flows)
 	}
-	log.Printf("Collecting results until %d flows have been seen..", maxFlows)
+	wg.Wait()
+	log.Printf("%d workers started. Collecting results until %d flows have been seen..", workerCount, maxFlows)
 
 	s := Stats{}
 	for workerflow := range flows {
