@@ -2,27 +2,30 @@
 
 ## Background
 
-The linux kernel has a feature for efficiently capturing packets called afpacket.
+The Linux kernel has a feature for efficiently capturing packets called afpacket.
 
-A related feature,  `fanout groups`, exists so that you can capture from N proccesses or threads at the
+A related feature,  `fanout groups`, exists so that you can capture from N processes or threads at the
 same time, and each thread will see 1/Nth of the traffic.  For stateful
 applications that perform stream reassembly, instead of a simple round robin distribution the packets need to
 be hashed according to their 5 tuple.  To further complicate the issue, the hash function
 needs to be symmetrical so that a packet from HostA to HostB is hashed to the
-same proccess as the packet from HostB to HostA.  This feature is known as PACKET\_FANOUT\_HASH
+same process as the packet from HostB to HostA. This feature is known as PACKET\_FANOUT\_HASH
 
-Unfortnately, some versions of the linux kernel are broken and do not properly
-implement the symmetric hash.  [This issue has been
+Unfortunately, some versions of the Linux kernel are broken and do not properly
+implement the symmetric hash. [This issue has been
 fixed](https://git.kernel.org/cgit/linux/kernel/git/davem/net-next.git/commit/?id=eb70db8756717b90c01ccc765fdefc4dd969fc74),
 but the buggy code made its way into various distribution kernels.
 
 It's not easy to know just by looking at a kernel version whether or not it
 will work properly.
 
+Furthermore, in some cases -- like, for example, with MPLS traffic -- afpacket fanout might not do the balancing
+as you expect.
+
 `can-i-use-afpacket-fanout` is a tool that runs multiple threads in a fanout group and checks to
 see if flows are routed to the appropriate workers.  If it sees a flow
 on two different workers, or the reverse flow on a different worker, it
-will log a FAILure.
+will log a Failure.
 
 ## Install
 

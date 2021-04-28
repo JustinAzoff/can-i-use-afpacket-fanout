@@ -20,6 +20,8 @@ var (
 	//skipInitial is used to skip packets that are delivered before the kernel fully sets up the load balancing
 	//between all the workers
 	skipInitial int
+	includeNetworkLayer bool
+	dumpNetworkLayerInformation bool
 	wg          sync.WaitGroup
 )
 
@@ -30,12 +32,15 @@ func init() {
 	flag.StringVar(&iface, "interface", "eth0", "Interface")
 	flag.IntVar(&statusInterval, "statusinterval", 500, "How many packets before each status update")
 	flag.IntVar(&skipInitial, "skipinitial", 100, "How many packets to skip before collecting data")
+	flag.BoolVar(&includeNetworkLayer, "includenetworklayer", false, "Set this flag to include the link and network layer protocols in the hash calculation")
+	flag.BoolVar(&dumpNetworkLayerInformation, "dumpnetworklayerinformation", false, "Set this flag to include the network layer information in the per-node output. Implies includenetworklayer")
 	flag.Parse()
 }
 
 type FiveTuple struct {
 	proto                  string
 	src, sport, dst, dport string
+	layerNames             string
 }
 
 type WorkerFlow struct {
@@ -68,6 +73,21 @@ func getFiveTuple(p gopacket.Packet) (FiveTuple, error) {
 		flow.sport = sport.String()
 		flow.dport = dport.String()
 	}
+
+	if includeNetworkLayer {
+		for _, layer := range p.Layers() {
+			// stop at the transport layer
+			if tl != nil && layer == tl {
+				break
+			}
+			if len(flow.layerNames) == 0 {
+				flow.layerNames = layer.LayerType().String()
+			} else {
+				flow.layerNames += ", " + layer.LayerType().String()
+			}
+		}
+	}
+
 	return flow, nil
 }
 
@@ -106,12 +126,17 @@ func worker(id int, flowchan chan WorkerFlow) {
 
 func main() {
 
+	if dumpNetworkLayerInformation {
+		includeNetworkLayer = true
+	}
+
 	flows := make(chan WorkerFlow, workerCount)
 
 	flowMap := make(map[FiveTuple]int)
 	failedFlowMap := make(map[FiveTuple]bool)
 	successFlowMap := make(map[FiveTuple]bool)
 	workerFlowCounts := make(map[int]int)
+	workerProtocolCounts := make(map[int]map[string]int)
 
 	wg.Add(workerCount)
 	for w := 0; w < workerCount; w++ {
@@ -125,12 +150,23 @@ func main() {
 	for workerflow := range flows {
 		s.packets++
 
-		//Check if this flow was seen before, and if so, on the same worker
+		// Check if this flow was seen before, and if so, on the same worker
 		flow := workerflow.flow
 		worker, existed := flowMap[flow]
 		if !existed {
 			flowMap[flow] = workerflow.workerID
 			workerFlowCounts[workerflow.workerID]++
+
+			if dumpNetworkLayerInformation {
+				// let's also do a protocol count
+				protocols, ok := workerProtocolCounts[workerflow.workerID]
+				if !ok {
+					protocols = make(map[string]int)
+					workerProtocolCounts[workerflow.workerID] = protocols
+				}
+				protocols[flow.layerNames]++
+			}
+
 		} else if worker != workerflow.workerID {
 			log.Printf("FAIL: saw flow %s on worker %d expected %d", flow, workerflow.workerID, worker)
 			failedFlowMap[flow] = true
@@ -143,8 +179,9 @@ func main() {
 			s.success++
 		}
 
+
 		//now check if the reverse flow was seen, and if so, on the same worker
-		reverseFlow := FiveTuple{flow.proto, flow.dst, flow.dport, flow.src, flow.sport}
+		reverseFlow := FiveTuple{flow.proto, flow.dst, flow.dport, flow.src, flow.sport, flow.layerNames}
 
 		worker, existed = flowMap[reverseFlow]
 		if !existed {
@@ -174,5 +211,10 @@ func main() {
 	log.Printf("Worker flow count distribution:")
 	for w := 0; w < workerCount; w++ {
 		log.Printf(" - worker=%d flows=%d", w, workerFlowCounts[w])
+		if dumpNetworkLayerInformation && workerFlowCounts[w] > 0 {
+			for proto, count := range workerProtocolCounts[w] {
+				log.Printf("   - protocol=%s flows=%d", proto, count)
+			}
+		}
 	}
 }
