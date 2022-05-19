@@ -30,7 +30,7 @@ will log a Failure.
 ## Install
 
     $ export GOPATH=~/go # If you don't already have this set to something
-    $ go get github.com/JustinAzoff/can-i-use-afpacket-fanout
+    $ go install github.com/JustinAzoff/can-i-use-afpacket-fanout@latest
 
 ## RUN
 
